@@ -580,7 +580,8 @@ onMounted(() => {
   </section>
 
   <section class="section">
-    <div class="card-grid cols-3">
+    <div class="swap-layout">
+      <div class="swap-row swap-row-top">
       <article class="panel-card swap-card">
         <div class="card-head">
           <h2 class="section-title">Approve MoonUSD</h2>
@@ -600,7 +601,7 @@ onMounted(() => {
         </button>
       </article>
 
-      <article class="panel-card swap-card">
+      <article class="panel-card swap-card swap-card-wide">
         <div class="card-head">
           <h2 class="section-title">Add Liquidity</h2>
           <StatusBadge label="ETH + MUSD" tone="neutral" />
@@ -636,7 +637,9 @@ onMounted(() => {
           {{ actionState.awaitingWalletAction === 'approve' ? 'Confirm approval...' : actionState.awaitingWalletAction === 'liquidity' ? 'Confirm add...' : actionState.pendingAction === 'approve' ? 'Approving...' : actionState.pendingAction === 'liquidity' ? 'Adding...' : needsMoonUsdApproval ? 'Approve & Add Liquidity' : 'Add Liquidity' }}
         </button>
       </article>
+      </div>
 
+      <div class="swap-row swap-row-bottom">
       <article class="panel-card swap-card">
         <div class="card-head">
           <h2 class="section-title">Buy MoonUSD</h2>
@@ -660,7 +663,7 @@ onMounted(() => {
         </button>
       </article>
 
-      <article class="panel-card swap-card span-two">
+      <article class="panel-card swap-card">
         <div class="card-head">
           <h2 class="section-title">Sell MoonUSD</h2>
           <StatusBadge label="MUSD -> ETH" tone="warning" />
@@ -682,6 +685,7 @@ onMounted(() => {
           {{ actionState.awaitingWalletAction === 'approve' ? 'Confirm approval...' : actionState.awaitingWalletAction === 'sell' ? 'Confirm swap...' : actionState.pendingAction === 'approve' ? 'Approving...' : actionState.pendingAction === 'sell' ? 'Selling...' : needsMoonUsdApproval ? 'Approve & Swap MUSD' : 'Swap MUSD for ETH' }}
         </button>
       </article>
+      </div>
     </div>
   </section>
 </template>
@@ -726,6 +730,29 @@ onMounted(() => {
   gap: 16px;
 }
 
+.swap-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.swap-row {
+  display: grid;
+  gap: 24px;
+}
+
+.swap-row-top {
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+}
+
+.swap-row-bottom {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.swap-card-wide {
+  min-height: 100%;
+}
+
 .field-block span {
   display: block;
   margin-bottom: 8px;
@@ -749,13 +776,10 @@ onMounted(() => {
   display: block;
 }
 
-.span-two {
-  grid-column: span 2;
-}
-
 @media (max-width: 980px) {
-  .span-two {
-    grid-column: span 1;
+  .swap-row-top,
+  .swap-row-bottom {
+    grid-template-columns: 1fr;
   }
 }
 
