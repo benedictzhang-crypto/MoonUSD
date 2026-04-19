@@ -4,6 +4,7 @@ import {
   MOONUSD_CONFIG,
   MOONUSD_TOKEN_ABI,
   MOONVAULT_ABI,
+  SEPOLIA_READ_RPC_URLS,
 } from './contracts'
 import { getWalletProvider } from './wallet'
 
@@ -32,12 +33,6 @@ function getExplorerBaseUrl() {
 }
 
 async function getReadProvider() {
-  // Prefer a dedicated Sepolia RPC for reads so dashboard data is stable
-  // even when MetaMask is disconnected or pointed at another network.
-  if (MOONUSD_CONFIG.rpcUrl) {
-    return new ethers.JsonRpcProvider(MOONUSD_CONFIG.rpcUrl)
-  }
-
   const injectedProvider = getWalletProvider()
 
   if (injectedProvider) {
@@ -46,6 +41,16 @@ async function getReadProvider() {
 
     if (Number(network.chainId) === MOONUSD_CONFIG.chainIdDecimal) {
       return browserProvider
+    }
+  }
+
+  for (const rpcUrl of SEPOLIA_READ_RPC_URLS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpcUrl)
+      await provider.getBlockNumber()
+      return provider
+    } catch {
+      // Try the next read RPC.
     }
   }
 

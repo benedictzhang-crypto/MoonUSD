@@ -40,6 +40,67 @@ const burnAmount = ref('')
 const redeemAmount = ref('')
 const liquidationTarget = ref('')
 const liquidationBurnAmount = ref('')
+const walletReady = computed(() => walletState.mode === 'metamask' && Boolean(walletState.address))
+
+const walletEthDisplay = computed(() => (
+  walletReady.value ? formatEth(state.vault.walletEth) : 'Connect wallet'
+))
+
+const walletMoonUsdDisplay = computed(() => (
+  walletReady.value ? `${formatNumber(state.vault.walletMoonUsd)} MoonUSD` : 'Connect wallet'
+))
+
+const vaultCollateralValueDisplay = computed(() => (
+  walletReady.value ? formatCurrency(collateralValueUsd.value) : 'Connect wallet'
+))
+
+const depositedCollateralDisplay = computed(() => (
+  walletReady.value ? formatEth(state.vault.depositedEth) : 'Connect wallet'
+))
+
+const mintedDebtDisplay = computed(() => (
+  walletReady.value ? `${formatNumber(state.vault.mintedMoonUsd)} MoonUSD` : 'Connect wallet'
+))
+
+const collateralRatioDisplay = computed(() => (
+  walletReady.value ? formatPercent(collateralRatio.value) : 'Connect wallet'
+))
+
+const availableToMintDisplay = computed(() => (
+  walletReady.value ? `${formatNumber(maxMintableMoonUsd.value)} MoonUSD` : 'Connect wallet'
+))
+
+const depositHelperText = computed(() => (
+  walletReady.value
+    ? `Wallet balance: ${formatEth(state.vault.walletEth)}`
+    : 'Connect MetaMask on this Vercel site to load your wallet balance.'
+))
+
+const mintHelperText = computed(() => (
+  walletReady.value
+    ? `Mint capacity: ${formatNumber(maxMintableMoonUsd.value)} MoonUSD`
+    : 'Connect MetaMask on Sepolia to calculate your mint capacity.'
+))
+
+const burnHelperText = computed(() => (
+  walletReady.value
+    ? `Wallet MoonUSD: ${formatNumber(state.vault.walletMoonUsd)} MoonUSD`
+    : 'Connect MetaMask on Sepolia to load your MoonUSD balance.'
+))
+
+const redeemHelperText = computed(() => (
+  walletReady.value
+    ? `Redeemable now: ${formatEth(redeemableEth.value)}`
+    : 'Connect MetaMask on Sepolia to load your redeemable ETH.'
+))
+
+const minimumRatioTone = computed(() => {
+  if (!walletReady.value || collateralRatio.value === null) {
+    return 'neutral'
+  }
+
+  return collateralRatio.value >= MIN_COLLATERAL_RATIO ? 'success' : 'danger'
+})
 
 const liquidationPreviewView = computed(() => {
   const preview = state.liquidationPreview.data
@@ -104,15 +165,15 @@ async function handleLiquidationSubmit() {
         </div>
         <div class="hero-line">
           <span>Wallet ETH</span>
-          <strong>{{ formatEth(state.vault.walletEth) }}</strong>
+          <strong>{{ walletEthDisplay }}</strong>
         </div>
         <div class="hero-line">
           <span>Wallet MoonUSD</span>
-          <strong>{{ formatNumber(state.vault.walletMoonUsd) }} MoonUSD</strong>
+          <strong>{{ walletMoonUsdDisplay }}</strong>
         </div>
         <div class="hero-line">
           <span>Vault collateral value</span>
-          <strong>{{ formatCurrency(collateralValueUsd) }}</strong>
+          <strong>{{ vaultCollateralValueDisplay }}</strong>
         </div>
       </article>
     </HeroPanel>
@@ -137,7 +198,7 @@ async function handleLiquidationSubmit() {
         <StatusBadge :label="dataSourceLabel" :tone="dataSourceTone" />
         <StatusBadge
           :label="`Minimum ratio ${MIN_COLLATERAL_RATIO}%`"
-          :tone="collateralRatio >= MIN_COLLATERAL_RATIO ? 'success' : 'danger'"
+          :tone="minimumRatioTone"
         />
         <StatusBadge
           :label="hasPendingTransaction ? 'Tx pending' : 'Ready'"
@@ -154,23 +215,23 @@ async function handleLiquidationSubmit() {
     <div class="card-grid cols-4">
       <MetricCard
         label="Deposited collateral"
-        :value="formatEth(state.vault.depositedEth)"
+        :value="depositedCollateralDisplay"
         detail="ETH currently locked in your vault."
       />
       <MetricCard
         label="Minted debt"
-        :value="`${formatNumber(state.vault.mintedMoonUsd)} MoonUSD`"
+        :value="mintedDebtDisplay"
         detail="Outstanding MoonUSD minted from this vault."
       />
       <MetricCard
         label="Collateral ratio"
-        :value="formatPercent(collateralRatio)"
+        :value="collateralRatioDisplay"
         detail="Live ratio for your vault based on the current Sepolia ETH price."
-        :tone="collateralRatio >= 200 ? 'success' : collateralRatio >= 150 ? 'warning' : 'danger'"
+        :tone="!walletReady || collateralRatio === null ? 'neutral' : collateralRatio >= 200 ? 'success' : collateralRatio >= 150 ? 'warning' : 'danger'"
       />
       <MetricCard
         label="Available to mint"
-        :value="`${formatNumber(maxMintableMoonUsd)} MoonUSD`"
+        :value="availableToMintDisplay"
         detail="Remaining mint capacity while staying above the 150% minimum."
       />
     </div>
@@ -182,7 +243,7 @@ async function handleLiquidationSubmit() {
         v-model="depositAmount"
         title="Deposit ETH"
         description="Add more ETH collateral before minting or to improve the health of the vault."
-        :helper-text="`Wallet balance: ${formatEth(state.vault.walletEth)}`"
+        :helper-text="depositHelperText"
         button-label="Deposit collateral"
         input-label="ETH amount"
         :pending="isActionPending('deposit')"
@@ -193,7 +254,7 @@ async function handleLiquidationSubmit() {
         v-model="mintAmount"
         title="Mint MoonUSD"
         description="Create new MoonUSD against the available collateral while staying above 150%."
-        :helper-text="`Mint capacity: ${formatNumber(maxMintableMoonUsd)} MoonUSD`"
+        :helper-text="mintHelperText"
         button-label="Mint MoonUSD"
         input-label="MoonUSD amount"
         :pending="isActionPending('mint')"
@@ -204,7 +265,7 @@ async function handleLiquidationSubmit() {
         v-model="burnAmount"
         title="Burn MoonUSD"
         description="Burn MoonUSD to reduce debt before redeeming collateral or improving vault safety."
-        :helper-text="`Wallet MoonUSD: ${formatNumber(state.vault.walletMoonUsd)} MoonUSD`"
+        :helper-text="burnHelperText"
         button-label="Burn MoonUSD"
         input-label="MoonUSD amount"
         :pending="isActionPending('burn')"
@@ -215,7 +276,7 @@ async function handleLiquidationSubmit() {
         v-model="redeemAmount"
         title="Redeem ETH"
         description="Withdraw ETH only if the remaining vault still satisfies the minimum collateral ratio."
-        :helper-text="`Redeemable now: ${formatEth(redeemableEth)}`"
+        :helper-text="redeemHelperText"
         button-label="Redeem ETH"
         input-label="ETH amount"
         :pending="isActionPending('redeem')"

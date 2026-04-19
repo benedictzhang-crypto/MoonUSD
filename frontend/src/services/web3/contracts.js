@@ -2,6 +2,7 @@ import { ethers } from 'ethers'
 
 const env = import.meta.env
 const cleanEnv = (value) => (typeof value === 'string' ? value.trim() : '')
+const DEFAULT_SEPOLIA_READ_RPCS = ['https://1rpc.io/sepolia', 'https://rpc.sepolia.org']
 
 export const MOONUSD_CONFIG = Object.freeze({
   networkName: 'Ethereum Sepolia',
@@ -12,6 +13,11 @@ export const MOONUSD_CONFIG = Object.freeze({
   vaultContract: cleanEnv(env.VITE_SEPOLIA_MOONVAULT_ADDRESS),
   swapPoolContract: cleanEnv(env.VITE_SEPOLIA_MOONSWAPPOOL_ADDRESS),
 })
+
+export const SEPOLIA_READ_RPC_URLS = [...new Set([
+  MOONUSD_CONFIG.rpcUrl,
+  ...DEFAULT_SEPOLIA_READ_RPCS,
+].filter(Boolean))]
 
 export const MOONUSD_TOKEN_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)',

@@ -58,10 +58,42 @@ const actionState = reactive({
   },
   isLoadingPool: false,
 })
+const walletReady = computed(() => walletState.mode === 'metamask' && Boolean(walletState.address))
 
 const liveSwapReady = computed(() => isLiveSwapReady())
 const uniswapSwapUrl = computed(() => getMoonUsdSwapUrl(0.05))
 const moonSwapPoolUrl = computed(() => (liveSwapReady.value ? getMoonSwapPoolExplorerUrl() : ''))
+const lpSharesDisplay = computed(() => (
+  walletReady.value ? formatNumber(actionState.pool.walletLiquidityShares, 4) : 'Connect wallet'
+))
+const allowanceLabel = computed(() => {
+  if (!walletReady.value) {
+    return 'Connect wallet'
+  }
+
+  return needsMoonUsdApproval.value ? 'Approval needed' : 'Approved'
+})
+const allowanceTone = computed(() => {
+  if (!walletReady.value) {
+    return 'neutral'
+  }
+
+  return needsMoonUsdApproval.value ? 'warning' : 'success'
+})
+const approvalStatusLabel = computed(() => {
+  if (!walletReady.value) {
+    return 'Wallet needed'
+  }
+
+  return needsMoonUsdApproval.value ? 'Needed' : 'Ready'
+})
+const approvalStatusTone = computed(() => {
+  if (!walletReady.value) {
+    return 'neutral'
+  }
+
+  return needsMoonUsdApproval.value ? 'warning' : 'success'
+})
 
 const poolHasLiquidity = computed(() => (
   Number.isFinite(actionState.pool.reserveEth) &&
@@ -478,14 +510,14 @@ onMounted(() => {
       />
       <MetricCard
         label="Your LP Shares"
-        :value="formatNumber(actionState.pool.walletLiquidityShares, 4)"
+        :value="lpSharesDisplay"
         detail="Liquidity shares owned by the connected wallet."
       />
       <MetricCard
         label="MoonUSD Allowance"
-        :value="needsMoonUsdApproval ? 'Approval needed' : 'Approved'"
+        :value="allowanceLabel"
         detail="Approve once before adding liquidity or selling MoonUSD into the pool."
-        :tone="needsMoonUsdApproval ? 'warning' : 'success'"
+        :tone="allowanceTone"
       />
     </div>
   </section>
@@ -495,7 +527,7 @@ onMounted(() => {
       <article class="panel-card swap-card">
         <div class="card-head">
           <h2 class="section-title">Approve MoonUSD</h2>
-          <StatusBadge :label="needsMoonUsdApproval ? 'Needed' : 'Ready' " :tone="needsMoonUsdApproval ? 'warning' : 'success'" />
+          <StatusBadge :label="approvalStatusLabel" :tone="approvalStatusTone" />
         </div>
         <p class="section-copy">
           This one-time approval lets MoonSwapPool use your MoonUSD for liquidity adds and MoonUSD
