@@ -1,0 +1,22 @@
+{
+  "name": "MoonUSD Sepolia Token List",
+  "logoURI": "https://YOUR-PUBLIC-DOMAIN/moonusd-logo.svg",
+  "keywords": ["MoonUSD", "MUSD", "stablecoin", "sepolia"],
+  "timestamp": "2026-04-18T00:00:00.000Z",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "tokens": [
+    {
+      "chainId": 11155111,
+      "address": "0xFcbad99180D8289B52266fe91BE964BAb92Fa6AC",
+      "name": "MoonUSD",
+      "symbol": "MUSD",
+      "decimals": 18,
+      "logoURI": "https://YOUR-PUBLIC-DOMAIN/moonusd-logo.svg",
+      "tags": ["stablecoin", "sepolia"]
+    }
+  ]
+}

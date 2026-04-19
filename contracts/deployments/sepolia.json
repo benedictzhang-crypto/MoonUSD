@@ -1,0 +1,11 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x9a022CA3D7fcDfdC0C6B30fdc36Dd29089Ea5a32",
+  "moonUsdToken": "0xFcbad99180D8289B52266fe91BE964BAb92Fa6AC",
+  "moonVault": "0x0FA9A915540725aA72a0f759617192d22ecE8a08",
+  "ethUsdPriceFeed": "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+  "deployedAt": "2026-04-17T23:47:49.442Z",
+  "moonSwapPool": "0x6ef51eb91FE8a7e7e3d29970263681F7AC62cA07",
+  "updatedAt": "2026-04-18T17:24:49.798Z"
+}

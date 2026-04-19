@@ -1,0 +1,24 @@
+{
+  "name": "moonusd-contracts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "clean": "hardhat clean",
+    "deploy:local": "hardhat run scripts/deploy.js",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:swap:local": "hardhat run scripts/deploy-swap-pool.js",
+    "deploy:swap:sepolia": "hardhat run scripts/deploy-swap-pool.js --network sepolia",
+    "sync:frontend:local": "node scripts/sync-frontend-config.js hardhat",
+    "sync:frontend:sepolia": "node scripts/sync-frontend-config.js sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.17"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.2.0",
+    "dotenv": "^16.4.7"
+  }
+}
