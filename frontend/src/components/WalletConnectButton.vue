@@ -67,8 +67,8 @@ async function handleSwitchToSepolia() {
   }
 }
 
-function handleDisconnect() {
-  disconnectWallet()
+async function handleDisconnect() {
+  await disconnectWallet()
   closeMenu()
 }
 

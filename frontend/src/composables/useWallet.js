@@ -1,6 +1,7 @@
 import { computed, reactive } from 'vue'
 import {
   connectMetaMask,
+  disconnectMetaMask,
   getWalletProvider,
   ensureSepoliaNetwork,
   getConnectedAccount,
@@ -141,7 +142,6 @@ export function useWallet() {
     walletState.isBusy = true
 
     try {
-      clearLocalDisconnectFlag()
       const snapshot = await connectMetaMask()
       applyWalletSnapshot(snapshot)
     } catch (error) {
@@ -156,9 +156,38 @@ export function useWallet() {
     }
   }
 
-  function disconnectWallet() {
-    setLocalDisconnectFlag()
-    resetWalletState('Disconnected in MoonUSD. MetaMask may still show this site as connected until you revoke it there.')
+  async function disconnectWallet() {
+    walletState.isBusy = true
+
+    try {
+      const result = await disconnectMetaMask()
+
+      if (result.revoked && !result.stillConnected) {
+        setLocalDisconnectFlag()
+        resetWalletState('Wallet disconnected. The next connect should trigger a fresh MetaMask approval.')
+        return
+      }
+
+      if (!result.supportsRevoke) {
+        clearLocalDisconnectFlag()
+        walletState.status =
+          'MetaMask did not expose permission revoke here, so the wallet stayed connected. Open MetaMask Connected Sites to fully disconnect this site.'
+        return
+      }
+
+      clearLocalDisconnectFlag()
+      walletState.status =
+        'MetaMask still reports this site as connected, so MoonUSD kept the wallet session active. Remove the site in MetaMask permissions if you want a fresh connect prompt.'
+    } catch (error) {
+      if (error?.code === 4001) {
+        walletState.status = 'Disconnect request was rejected in MetaMask. Wallet stays connected.'
+        return
+      }
+
+      walletState.status = error?.message || 'Could not disconnect this site from MetaMask.'
+    } finally {
+      walletState.isBusy = false
+    }
   }
 
   async function switchToSepolia() {

@@ -49,6 +49,24 @@ export async function connectMetaMask() {
     throw new Error('MetaMask is not installed in this browser.')
   }
 
+  try {
+    await provider.request({
+      method: 'wallet_requestPermissions',
+      params: [{ eth_accounts: {} }],
+    })
+  } catch (error) {
+    // `wallet_requestPermissions` is preferred on extension because it
+    // explicitly requests the `eth_accounts` permission, but some providers
+    // or platforms only support `eth_requestAccounts`.
+    if (![4001, -32002, 4200, -32601].includes(error?.code)) {
+      throw error
+    }
+
+    if (error?.code === 4001 || error?.code === -32002) {
+      throw error
+    }
+  }
+
   const accounts = await provider.request({ method: 'eth_requestAccounts' })
   const chainId = await provider.request({ method: 'eth_chainId' })
 
@@ -56,6 +74,43 @@ export async function connectMetaMask() {
     account: accounts[0],
     chainId,
     isSepolia: chainId === SEPOLIA_CHAIN_ID,
+  }
+}
+
+export async function disconnectMetaMask() {
+  const provider = getInjectedProvider()
+
+  if (!provider) {
+    return {
+      revoked: false,
+      stillConnected: false,
+      supportsRevoke: false,
+    }
+  }
+
+  let supportsRevoke = true
+  let revoked = false
+
+  try {
+    await provider.request({
+      method: 'wallet_revokePermissions',
+      params: [{ eth_accounts: {} }],
+    })
+    revoked = true
+  } catch (error) {
+    if ([4200, -32601].includes(error?.code)) {
+      supportsRevoke = false
+    } else {
+      throw error
+    }
+  }
+
+  const accounts = await provider.request({ method: 'eth_accounts' }).catch(() => [])
+
+  return {
+    revoked: revoked || !accounts.length,
+    stillConnected: accounts.length > 0,
+    supportsRevoke,
   }
 }
 
