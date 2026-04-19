@@ -35,6 +35,7 @@ const buyEthAmount = ref('0.01')
 const sellMoonUsdAmount = ref('10')
 
 const actionState = reactive({
+  awaitingWalletAction: '',
   pendingAction: '',
   lastAction: {
     tone: 'neutral',
@@ -135,6 +136,14 @@ const maxSeedEthFromWalletMoonUsd = computed(() => {
 
   return Math.max(Math.min(moonUsdLimitedEth, state.vault.walletEth - 0.01), 0)
 })
+
+const walletEthForSwapDisplay = computed(() => (
+  walletReady.value ? formatEth(state.vault.walletEth, 4) : 'Connect wallet'
+))
+
+const walletMoonUsdForSwapDisplay = computed(() => (
+  walletReady.value ? `${formatNumber(state.vault.walletMoonUsd, 2)} MUSD` : 'Connect wallet'
+))
 
 function normalizeAmount(amount) {
   const numeric = Number(amount)
@@ -295,15 +304,18 @@ async function ensureWalletReady(actionLabel) {
 }
 
 async function runPoolTransaction(actionKey, title, callback) {
-  if (actionState.pendingAction) {
+  if (actionState.pendingAction || actionState.awaitingWalletAction) {
     setAction('warning', 'Transaction pending', 'Wait for the current Sepolia transaction to confirm before sending another one.')
     return false
   }
 
-  actionState.pendingAction = actionKey
+  actionState.awaitingWalletAction = actionKey
+  setAction('neutral', `${title} awaiting wallet`, 'Check MetaMask and confirm the transaction request.')
 
   try {
     const tx = await callback()
+    actionState.awaitingWalletAction = ''
+    actionState.pendingAction = actionKey
     const txUrl = getMoonSwapTransactionExplorerUrl(tx.hash)
     setAction('neutral', `${title} submitted`, `Waiting for confirmation. Tx ${shortHashFromUrl(txUrl)} is pending.`, txUrl)
     await tx.wait()
@@ -311,9 +323,16 @@ async function runPoolTransaction(actionKey, title, callback) {
     setAction('success', `${title} confirmed`, `Sepolia confirmed the transaction. Tx ${shortHashFromUrl(txUrl)} is on Etherscan.`, txUrl)
     return true
   } catch (error) {
-    setAction('warning', `${title} failed`, error?.shortMessage || error?.message || 'The swap transaction could not be completed.')
+    const message =
+      error?.code === 4001
+        ? 'The MetaMask confirmation was rejected.'
+        : error?.code === -32002
+          ? 'MetaMask already has a pending request. Open the extension and finish or cancel it first.'
+          : error?.shortMessage || error?.message || 'The swap transaction could not be completed.'
+    setAction('warning', `${title} failed`, message)
     return false
   } finally {
+    actionState.awaitingWalletAction = ''
     actionState.pendingAction = ''
   }
 }
@@ -349,6 +368,25 @@ async function handleAddLiquidity() {
 
   if (!ethAmount || !Number.isFinite(moonUsdAmount) || moonUsdAmount <= 0) {
     setAction('warning', 'Add liquidity unavailable', 'Enter a valid ETH amount and wait for the MoonUSD quote.')
+    return
+  }
+
+  if (!Number.isFinite(state.vault.walletMoonUsd) || state.vault.walletMoonUsd < moonUsdAmount) {
+    setAction(
+      'warning',
+      'Not enough MoonUSD',
+      `This add needs about ${formatNumber(moonUsdAmount, 2)} MUSD, but the connected wallet currently has ${formatNumber(state.vault.walletMoonUsd, 2)} MUSD.`,
+    )
+    return
+  }
+
+  const gasBufferEth = 0.01
+  if (!Number.isFinite(state.vault.walletEth) || state.vault.walletEth < ethAmount + gasBufferEth) {
+    setAction(
+      'warning',
+      'Not enough ETH',
+      `Keep at least ${formatEth(gasBufferEth, 2)} in the wallet for gas. This add would need roughly ${formatEth(ethAmount + gasBufferEth, 4)} ETH available.`,
+    )
     return
   }
 
@@ -395,6 +433,15 @@ async function handleSellMoonUsd() {
 
   if (!moonUsdAmount || !Number.isFinite(quotedEthOut) || quotedEthOut <= 0) {
     setAction('warning', 'Sell unavailable', 'Enter a valid MoonUSD amount and wait for the quote.')
+    return
+  }
+
+  if (!Number.isFinite(state.vault.walletMoonUsd) || state.vault.walletMoonUsd < moonUsdAmount) {
+    setAction(
+      'warning',
+      'Not enough MoonUSD',
+      `This sell needs ${formatNumber(moonUsdAmount, 2)} MUSD, but the connected wallet currently has ${formatNumber(state.vault.walletMoonUsd, 2)} MUSD.`,
+    )
     return
   }
 
@@ -514,6 +561,16 @@ onMounted(() => {
         detail="Liquidity shares owned by the connected wallet."
       />
       <MetricCard
+        label="Wallet ETH"
+        :value="walletEthForSwapDisplay"
+        detail="Connected wallet ETH available for adds and buys."
+      />
+      <MetricCard
+        label="Wallet MoonUSD"
+        :value="walletMoonUsdForSwapDisplay"
+        detail="Connected wallet MoonUSD available for adds and sells."
+      />
+      <MetricCard
         label="MoonUSD Allowance"
         :value="allowanceLabel"
         detail="Approve once before adding liquidity or selling MoonUSD into the pool."
@@ -536,10 +593,10 @@ onMounted(() => {
         <button
           class="button"
           type="button"
-          :disabled="actionState.pendingAction && actionState.pendingAction !== 'approve'"
+          :disabled="Boolean(actionState.awaitingWalletAction || (actionState.pendingAction && actionState.pendingAction !== 'approve'))"
           @click="handleApproveMoonUsd()"
         >
-          {{ actionState.pendingAction === 'approve' ? 'Approving...' : 'Approve MoonUSD' }}
+          {{ actionState.awaitingWalletAction === 'approve' ? 'Confirm approval...' : actionState.pendingAction === 'approve' ? 'Approving...' : 'Approve MoonUSD' }}
         </button>
       </article>
 
@@ -556,6 +613,10 @@ onMounted(() => {
           <span>MoonUSD needed</span>
           <strong>{{ formatNumber(actionState.quotes.liquidityMoonUsd, 2) }} MUSD</strong>
         </div>
+        <div class="quote-box">
+          <span>Wallet MoonUSD</span>
+          <strong>{{ walletMoonUsdForSwapDisplay }}</strong>
+        </div>
         <div v-if="poolHasLiquidity" class="quote-box">
           <span>Estimated LP shares</span>
           <strong>{{ formatNumber(actionState.quotes.liquidityShares, 4) }}</strong>
@@ -569,9 +630,10 @@ onMounted(() => {
         <button
           class="button"
           type="button"
+          :disabled="Boolean(actionState.awaitingWalletAction || actionState.pendingAction)"
                     @click="handleAddLiquidity()"
         >
-          {{ actionState.pendingAction === 'approve' ? 'Approving...' : actionState.pendingAction === 'liquidity' ? 'Adding...' : needsMoonUsdApproval ? 'Approve & Add Liquidity' : 'Add Liquidity' }}
+          {{ actionState.awaitingWalletAction === 'approve' ? 'Confirm approval...' : actionState.awaitingWalletAction === 'liquidity' ? 'Confirm add...' : actionState.pendingAction === 'approve' ? 'Approving...' : actionState.pendingAction === 'liquidity' ? 'Adding...' : needsMoonUsdApproval ? 'Approve & Add Liquidity' : 'Add Liquidity' }}
         </button>
       </article>
 
@@ -591,9 +653,10 @@ onMounted(() => {
         <button
           class="button"
           type="button"
+          :disabled="Boolean(actionState.awaitingWalletAction || actionState.pendingAction)"
                     @click="handleBuyMoonUsd()"
         >
-          {{ actionState.pendingAction === 'buy' ? 'Buying...' : 'Swap ETH for MUSD' }}
+          {{ actionState.awaitingWalletAction === 'buy' ? 'Confirm swap...' : actionState.pendingAction === 'buy' ? 'Buying...' : 'Swap ETH for MUSD' }}
         </button>
       </article>
 
@@ -613,9 +676,10 @@ onMounted(() => {
         <button
           class="button"
           type="button"
+          :disabled="Boolean(actionState.awaitingWalletAction || actionState.pendingAction)"
                     @click="handleSellMoonUsd()"
         >
-          {{ actionState.pendingAction === 'approve' ? 'Approving...' : actionState.pendingAction === 'sell' ? 'Selling...' : needsMoonUsdApproval ? 'Approve & Swap MUSD' : 'Swap MUSD for ETH' }}
+          {{ actionState.awaitingWalletAction === 'approve' ? 'Confirm approval...' : actionState.awaitingWalletAction === 'sell' ? 'Confirm swap...' : actionState.pendingAction === 'approve' ? 'Approving...' : actionState.pendingAction === 'sell' ? 'Selling...' : needsMoonUsdApproval ? 'Approve & Swap MUSD' : 'Swap MUSD for ETH' }}
         </button>
       </article>
     </div>
