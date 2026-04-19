@@ -1,15 +1,16 @@
 import { ethers } from 'ethers'
 
 const env = import.meta.env
+const cleanEnv = (value) => (typeof value === 'string' ? value.trim() : '')
 
 export const MOONUSD_CONFIG = Object.freeze({
   networkName: 'Ethereum Sepolia',
   chainIdHex: '0xaa36a7',
-  chainIdDecimal: Number(env.VITE_SEPOLIA_CHAIN_ID || 11155111),
-  rpcUrl: env.VITE_SEPOLIA_RPC_URL || '',
-  stablecoinContract: env.VITE_SEPOLIA_MOONUSD_TOKEN_ADDRESS || '',
-  vaultContract: env.VITE_SEPOLIA_MOONVAULT_ADDRESS || '',
-  swapPoolContract: env.VITE_SEPOLIA_MOONSWAPPOOL_ADDRESS || '',
+  chainIdDecimal: Number(cleanEnv(env.VITE_SEPOLIA_CHAIN_ID) || 11155111),
+  rpcUrl: cleanEnv(env.VITE_SEPOLIA_RPC_URL),
+  stablecoinContract: cleanEnv(env.VITE_SEPOLIA_MOONUSD_TOKEN_ADDRESS),
+  vaultContract: cleanEnv(env.VITE_SEPOLIA_MOONVAULT_ADDRESS),
+  swapPoolContract: cleanEnv(env.VITE_SEPOLIA_MOONSWAPPOOL_ADDRESS),
 })
 
 export const MOONUSD_TOKEN_ABI = [
