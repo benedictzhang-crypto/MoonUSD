@@ -32,6 +32,12 @@ function getExplorerBaseUrl() {
 }
 
 async function getReadProvider() {
+  // Prefer a dedicated Sepolia RPC for reads so dashboard data is stable
+  // even when MetaMask is disconnected or pointed at another network.
+  if (MOONUSD_CONFIG.rpcUrl) {
+    return new ethers.JsonRpcProvider(MOONUSD_CONFIG.rpcUrl)
+  }
+
   const injectedProvider = getWalletProvider()
 
   if (injectedProvider) {
@@ -41,10 +47,6 @@ async function getReadProvider() {
     if (Number(network.chainId) === MOONUSD_CONFIG.chainIdDecimal) {
       return browserProvider
     }
-  }
-
-  if (MOONUSD_CONFIG.rpcUrl) {
-    return new ethers.JsonRpcProvider(MOONUSD_CONFIG.rpcUrl)
   }
 
   throw getReadProviderError()
